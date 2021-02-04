@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% set title = "search" %}
+
+{% block body %}
+<div class="container">
+    <div class="field is-horizontal">
+        <div class="field-label is-normal">
+            <label class="label">Query:</label>
+        </div>
+        <div class="field-body">
+            <div class="field">
+                <p class="control is-expanded has-icons-left">
+                    <input id="searchQuery" class="input" type="text" placeholder="Query">
+                    <span class="icon is-small is-left">
+                        <i class="fas fa-search"></i>
+                    </span>
+                </p>
+            </div>
+            <div class="field is-narrow">
+                <div class="control">
+                    <div class="select is-fullwidth">
+                        <select id="columnSelect">
+                            {% for item in searchableKeys %}<option value="{{ item }}">{{ item }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="field is-narrow">
+                <div class="control">
+                    <div class="select is-fullwidth">
+                        <select id="filterSelect">
+                            {% for item in searchableFilters %}<option value="{{ item }}">{{ item }}</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="field">
+                <button class="button" onclick="search()">Search &#128269;</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="cardContainer" class="content">
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+function onDownloadButtonClicked(ctx) {
+    
+}
+
+function search() {
+    let q = elem("searchQuery").value;
+    let c = elem("columnSelect").value;
+    let f = elem("filterSelect").value;
+    post("/api/v1/db/table/find", {"query": q, "column": c, "filter": f}, function(data) {
+        let cc = elem("cardContainer");
+        cc.innerHTML = "";
+        if(data["error"]) cc.appendChild(createCard(null, "Error", {"text": "Could not query the api."}));
+        else {
+            data["items"].forEach(e => {
+                let container = createDiv(null, ["columns"]);
+                container.appendChild(createColumnCard(createCard(e["uuid"], e["name"], [
+                    {"text": `Created: ${e["created"]}`},
+                    {"text": `Last Modified: ${e["last_modified"]}`},
+                    {"text": `Pieces: ${e["piece_count"]}`},
+                    {"text": `Piece length: ${e["piece_length"]}`},
+                    {"text": `Size: ${e["piece_count"] * e["piece_length"]}`},
+                    {"text": `Publisher: ${e["publisher"]}`},
+                    {"text": `Publisher URL: ${e["publisher_url"]}`}
+                ], [
+                    {"text": "Download", "callback": onDownloadButtonClicked}
+                ])));
+                cc.appendChild(container);
+            });
+        }
+
+    });
+}
+window.addEventListener('load', function () {
+    $('#')
+});
+</script>
+<script href="https://cdn.datatables.net/1.10.23/js/jquery.dataTables.min.js"></script>
+{% endblock %}

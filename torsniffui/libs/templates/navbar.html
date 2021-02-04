@@ -1,0 +1,19 @@
+{% macro navbar(title, items) %}
+&nbsp;
+<div class="container">
+    <nav class="navbar" role="navigation" aria-label="main navigation">
+        <div class="navbar-brand">
+            <a class="navbar-item">{{ title }}</a>
+        </div>
+
+        <div class="navbar-menu">
+            <div class="navbar-start">
+                {% for item in items %}
+                    <a class="navbar-item" href="/{{ item }}">{{ item }}</a>
+                {% endfor %}
+            </div>
+        </div>
+    </nav>
+</div>
+&nbsp;
+{% endmacro %}

@@ -1,0 +1,81 @@
+<script>
+let elem = function (id) {
+    return document.getElementById(id);
+}
+
+function request(url, method, callback, data=null, mimeType="application/json") {
+    let xhr = new XMLHttpRequest();
+    xhr.onload = function () {
+        callback(JSON.parse(xhr.response));
+    }
+    xhr.overrideMimeType(mimeType);
+    xhr.open(method, url);
+    xhr.send(data);
+}
+
+function get(url, callback) {
+    request(url, "GET", callback);
+}
+
+function post(url, data, callback) {
+    request(url, "POST", callback, JSON.stringify(data));
+}
+
+function createElement(name, classList=[], id=null){
+    let r = document.createElement(name);
+    r.id = id;
+    classList.forEach(e => r.classList.add(e));
+    return r;
+}
+
+function createP(text, classList=[]) {
+    let r = createElement("p", classList);
+    r.innerText = text;
+    return r;
+}
+
+function createDiv(id=null, classList=[]){
+    return createElement("div", classList, id);
+}
+
+function createFooter(classList=[]) {
+    return createElement("footer", classList);
+}
+
+function createA(text, id=null, classList=[], callback=null, href=null) {
+    let r = createElement("a", ["card-footer-item"], id);
+    r.onclick = callback;
+    r.innerText = text;
+    r.href = href
+    return r;
+}
+
+function createCard(id, header, contentItems, footerButtons) {
+    let r = createElement("div")
+    let h = createElement("header", ["card-header"]);
+    let hp = createP(header, ["card-header-title"]);
+    h.appendChild(hp)
+    r.appendChild(h);
+    let c = createDiv(null, ["card-content"]);
+    let cc = createDiv(null, ["content"]);
+    contentItems.forEach(e => {
+        cc.appendChild(createP(e["text"]));
+    });
+    c.appendChild(cc);
+    r.appendChild(c);
+    let f = createFooter(["card-footer"]);
+    footerButtons.forEach(e => {
+        f.appendChild(createA(e["text"], id, ["card-footer-item"], function() {e["callback"](id);}));
+    });
+    r.appendChild(f);
+    return r;
+}
+
+function createColumnCard(c, cls="is-one-third") {
+    let r = document.createElement("div");
+    r.classList.add("column");
+    r.classList.add(cls);
+    r.appendChild(c);
+    return r;
+}
+</script>

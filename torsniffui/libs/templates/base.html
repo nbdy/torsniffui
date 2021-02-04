@@ -1,0 +1,31 @@
+{% from "navbar.html" import navbar %}
+<html>
+    <head>
+        <title>{{ title }}</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.1/css/bulma.min.css">
+        <link rel="stylesheet" href="https://cdn.datatables.net/1.10.23/css/jquery.dataTables.min.css">
+    </head>
+    <body>
+        {{ navbar("torsniffui", ["dashboard", "search"]) }}
+        <div class="container">
+            <div class="content">
+                <h3 id="torrentEntryCounts">Entries: ..</h3>
+            </div>
+        </div>
+        {% block body %}{% endblock %}
+    </body>
+        {% include "js.html" %}
+        <script>
+        function updateTorrentEntryCounts() {
+            post('/api/v1/db/table/count', {"table": "torrents"}, function (data) {
+                elem("torrentEntryCounts").innerText = `Entries: ${data["count"].toString()}`;
+            });
+        }
+
+        window.addEventListener('load', function () {
+            setInterval(updateTorrentEntryCounts, 2000);
+
+        });
+    </script>
+    {% block js %}{% endblock %}
+</html>

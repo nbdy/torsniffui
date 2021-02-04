@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% set title = "dashboard" %}
+
+{% block body %}
+<div class="container">
+    &nbsp;
+    <div class="content">
+        <h2>New Torrents:</h2>
+        <div id="newTorrentCards" class="columns"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+function getDate() {
+    let d = new Date();
+    d.setHours(d.getHours() - 1);
+    return d;
+}
+
+function onInspectButtonClicked(ctx) {
+
+}
+
+function onDownloadButtonClicked(ctx) {
+
+}
+
+function updateNewTorrentCards() {
+    post('/api/v1/db/table/new', {"table": "torrents",
+        "after": getDate().toISOString(), "count": 3}, function (data) {
+        if(data["error"]) createCard("Error", "Could not load new torrents.");
+        else {
+            let cc = document.getElementById("newTorrentCards");
+            data["items"].forEach(e => {
+                console.log(e)
+                let c = createCard(e["id"], e["name"], [
+                    {"text": `Pieces: ${e["piece_count"]}`},
+                    {"text": `Piece Length: ${e["piece_length"]}`}
+                ], [
+                    {"text": "Inspect", "callback": onInspectButtonClicked},
+                    {"text": "Download", "callback": onDownloadButtonClicked}
+                ]);
+                c = createColumnCard(c);
+                if(cc.children.length >= 3) cc.removeChild(cc.lastChild);
+                cc.appendChild(c);
+            });
+        }
+    });
+}
+
+window.addEventListener('load', function () {
+    setInterval(updateTorrentEntryCounts, 2000);
+    setInterval(updateNewTorrentCards, 2000);
+});
+</script>
+{% endblock %}
