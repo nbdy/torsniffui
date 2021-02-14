@@ -1,7 +1,8 @@
 watchdog
 pyinotify
 flask
-git+https://github.com/nbdy/podb
+podb
 setuptools
 loguru
 simplejson
+tqdm

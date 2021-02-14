@@ -51,16 +51,16 @@ class Server(Process):
         @self.app.route("/search")
         def search():
             return render("search.html",
-                          searchableKeys=self.db.get_columns("torrents"),
+                          searchableKeys=self.db.columns(),
                           searchableFilters=[
-                              "contains", "after", "startswith", "endswith"
-                          ])  # todo make filter stuff work
+                              "contains", "after", "before", "startswith", "endswith"
+                          ])
 
         @self.app.route("/api/v1/db/table/count", methods=["POST"])
         def api_v1_db_table_count():
             def f(jo: dict):
                 return {
-                    "count": self.db.size(jo["table"])
+                    "count": self.db.size()
                 }
             return api(["table"], f)
 
@@ -68,7 +68,8 @@ class Server(Process):
         def api_v1_db_table_new():
             def f(jo: dict):
                 r = []
-                for i in self.db.get_after(jo["table"], dateutil.parser.parse(jo["after"]), jo["count"]):
+                print(jo)
+                for i in self.db.find_after(dateutil.parser.parse(jo["after"]), n=jo["count"]):
                     r.append(i.__dict__)
                 return {
                     "items": r
@@ -82,18 +83,19 @@ class Server(Process):
                     "items": [],
                     "error": False
                 }
-                tbl = "torrents"
-                q = jo["query"]
-                c = jo["column"]
+                q = str(jo["query"])
+                c = str(jo["column"])
                 f = jo["filter"]
                 if f == "contains":
-                    d = self.db.get_ilike(tbl, c, "%{}%".format(q))
+                    d = self.db.find_contains(c, "{}".format(q.lower()))
                 elif f == "after":
-                    d = self.db.get_after(tbl, c, q)
+                    d = self.db.find_after(dateutil.parser.parse(q))
+                elif f == "before":
+                    d = self.db.find_before(dateutil.parser.parse(q))
                 elif f == "startswith":
-                    d = self.db.get_startswith(tbl, c, q)
+                    d = self.db.find_startswith(c, q)
                 elif f == "endswith":
-                    d = self.db.get_endswith(tbl, c, q)
+                    d = self.db.find_endswith(c, q)
                 else:
                     d = []
                     r["error"] = False

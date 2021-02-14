@@ -5,6 +5,9 @@ from loguru import logger as log
 from os.path import isdir
 from os import rename, sep
 from io import UnsupportedOperation
+from tqdm import tqdm
+from multiprocessing import Pool
+import torsniffui
 
 
 def move_faulty_file(path: str, ext: str = ".faulty"):
@@ -16,36 +19,45 @@ def get_torrent_name(path: str):
 
 
 class Torrent(DBEntry):
-    def __init__(self, path: str):
+    def __init__(self, fp: str):
         DBEntry.__init__(self)
-        self.uuid = get_torrent_name(path)
-        try:
-            with open(path, 'rb') as fp:
-                self.data = TorrentFileParser(fp, encoding="auto").parse()
-                self.set_value("name")
-                self.set_value("length", func=int)
-                self.set_value("piece length", "piece_length", int)
-                self.set_value("pieces", "piece_count", len)
-                self.set_value("files", "file_count", len)
-                self.set_value("publisher")
-                self.set_value("publisher-url", "publisher_url")
-        except (UnsupportedOperation, UnicodeEncodeError, InvalidTorrentDataException, TypeError) as e:
-            log.warning("Could not parse '{}'.", path)
-            log.error(e)
-            pass
+        self.uuid = get_torrent_name(fp)
 
-    def set_value(self, k: str, n=None, func=None):
+    def set_value(self, data: dict, k: str, n=None, func=None):
         if not n:
             n = k
         if not func:
             func = str
 
         i = "info"
-        if k in self.data[i].keys():
-            setattr(self, n, func(self.data[i][k]))
+        if k in data[i].keys():
+            setattr(self, n, func(data[i][k]))
+
+    @staticmethod
+    def convert(path: str):
+        try:
+            r = Torrent(path)
+            with open(path, 'rb') as fp:
+                d = TorrentFileParser(fp, encoding="auto").parse()
+                r.set_value(d, "name")
+                r.set_value(d, "length", func=int)
+                r.set_value(d, "piece length", "piece_length", int)
+                r.set_value(d, "pieces", "piece_count", len)
+                r.set_value(d, "files", "file_count", len)
+                r.set_value(d, "publisher")
+                r.set_value(d, "publisher-url", "publisher_url")
+                return r
+        except (UnsupportedOperation, UnicodeEncodeError, InvalidTorrentDataException, TypeError) as e:
+            if torsniffui.TORRENT_DECODE_WARNINGS:
+                log.warning("Could not parse '{}'.", path)
+                log.error(e)
+            return None
 
 
 class Database(DB):
+    torrent_table = "torrents"
+    force_indexing = False
+
     def __init__(self, name="torsniff"):
         DB.__init__(self, name)
 
@@ -56,8 +68,34 @@ class Database(DB):
             directory += "/"
 
         log.info("Indexing '{}'.", directory)
-        tbl = "torrents"
-        for fp in glob.iglob(directory + "/**/**/*.torrent", recursive=True):
-            tn = get_torrent_name(fp)
-            if not self.contains(tbl, "uuid", tn) or force:
-                self.upsert(tbl, Torrent(fp))
+
+        items = list(glob.iglob(directory + "/**/**/*.torrent", recursive=True))
+
+        def get_new_only():
+            r = []
+            for i in tqdm(items, total=len(items)):
+                if not self.find_by_uuid(get_torrent_name(i)):
+                    r.append(i)
+            return r
+
+        if not force:
+            log.info("Sorting out already existing items.")
+            items = get_new_only()
+
+        log.info("Converting {} items.", len(items))
+
+        torrents = []
+
+        try:
+            with Pool() as pool:
+                for _ in tqdm(pool.imap_unordered(Torrent.convert, items), total=len(items)):
+                    if _ is not None:
+                        torrents.append(_)
+        except KeyboardInterrupt:
+            log.warning("Conversion interrupted. Only {} elements converted.", len(torrents))
+            pass
+
+        log.info("Inserting {} items.", len(torrents))
+
+        for _ in tqdm(torrents, total=len(torrents)):
+            self.upsert(_)
