@@ -3,7 +3,7 @@ from torrent_parser import TorrentFileParser, InvalidTorrentDataException
 import glob
 from loguru import logger as log
 from os.path import isdir
-from os import rename, sep
+from os import rename, sep, stat
 from io import UnsupportedOperation
 from tqdm import tqdm
 from multiprocessing import Pool
@@ -77,6 +77,16 @@ class Database(DB):
                 if not self.find_by_uuid(get_torrent_name(i)):
                     r.append(i)
             return r
+
+        def sort_valid_file():
+            r = []
+            for i in tqdm(items, total=len(items)):
+                if stat(get_torrent_name(i)).st_size > 0:
+                    r.append(i)
+            return r
+
+        log.info("Sorting out invalid files.")
+        items = sort_valid_file()
 
         if not force:
             log.info("Sorting out already existing items.")
